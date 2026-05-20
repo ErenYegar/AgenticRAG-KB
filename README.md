@@ -261,4 +261,4 @@ npm run test:e2e
 
 ## License
 
-No license file is included yet. Add a license before inviting external reuse or contributions.
+This project is licensed under the Apache License 2.0. See `LICENSE` for details.
