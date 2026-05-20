@@ -1,66 +1,66 @@
 # AgenticRAG Knowledge Base WebUI
 
-AgenticRAG Knowledge Base WebUI is a local knowledge-base question-answering application. It combines multi-format document ingestion, hybrid retrieval, optional knowledge-graph enrichment, streaming LLM answers, JWT authentication, and a React document-management interface.
+AgenticRAG Knowledge Base WebUI 是一个本地知识库问答系统。项目支持多格式文档入库、混合检索、可选知识图谱增强、流式 LLM 回答、JWT 权限管理，以及基于 React 的文档管理界面。
 
-The project is designed for private or team knowledge bases that need local document parsing and retrieval while calling an OpenAI-compatible chat-completion API for reasoning and answer generation.
+它适合用于个人或团队私有知识库：文档解析、向量存储和检索在本地完成，答案生成通过兼容 OpenAI Chat Completions 的大模型接口完成。
 
-## Features
+## 功能特性
 
-- Upload and parse PDF, Word, Excel, Markdown, and TXT files.
-- Retrieve with a hybrid pipeline: Chroma vector search, BM25 keyword search, and optional NetworkX knowledge-graph signals.
-- Stream answers through Server-Sent Events (SSE).
-- Manage documents from the Web UI with admin-only upload and delete actions.
-- Isolate results by department for normal users while allowing admins to search the full knowledge base.
-- Configure LLM, embedding model, Chroma path, JWT secret, and runtime paths through environment variables.
-- Run backend tests with pytest and frontend checks with Vitest, Playwright, TypeScript, and Vite.
+- 支持上传和解析 PDF、Word、Excel、Markdown、TXT 文档。
+- 使用混合检索流程：Chroma 向量检索、BM25 关键词检索、可选 NetworkX 知识图谱信号。
+- 通过 Server-Sent Events（SSE）流式输出答案。
+- 提供 Web UI 文档管理能力，管理员可上传和删除文档。
+- 支持按部门隔离普通用户检索范围，管理员可检索全库。
+- 通过环境变量配置 LLM、Embedding 模型、Chroma 路径、JWT 密钥和运行路径。
+- 后端支持 pytest 测试，前端支持 Vitest、Playwright、TypeScript 和 Vite 构建检查。
 
-## Architecture
+## 架构说明
 
-### Ingestion Flow
+### 文档入库流程
 
 ```text
-Uploaded file
-  -> documents.py parses supported formats into text
-  -> split_markdown() chunks content by headings
-  -> embedding.py creates bge-m3 embeddings
-  -> vector_store.py persists vectors in Chroma
-  -> retriever.py refreshes the BM25 index
-  -> graph.py optionally extracts triples into a NetworkX graph
+上传文件
+  -> documents.py 解析支持的文档格式为文本
+  -> split_markdown() 按标题和结构切分文本
+  -> embedding.py 使用 bge-m3 生成向量
+  -> vector_store.py 将向量持久化到 Chroma
+  -> retriever.py 刷新 BM25 索引
+  -> graph.py 可选：抽取三元组并写入 NetworkX 图谱
 ```
 
-### Query Flow
+### 查询流程
 
 ```text
-User question
-  -> POST /api/chat/stream with a JWT token
+用户问题
+  -> 携带 JWT Token 请求 POST /api/chat/stream
   -> AgenticRAGAgent
-      -> analyze query type
-      -> run hybrid retrieval
-      -> evaluate retrieval quality
-      -> refine and retry when evidence is insufficient
-      -> stream the final answer from the configured LLM
-  -> React UI renders tokens and source cards
+      -> 分析查询类型
+      -> 执行混合检索
+      -> 评估检索结果质量
+      -> 证据不足时细化查询并重试
+      -> 调用配置的大模型流式生成答案
+  -> React 前端渲染 token 和来源卡片
 ```
 
-## Repository Layout
+## 目录结构
 
 ```text
 AgenticRAG-KB/
 +-- backend/
 |   +-- kb_web_agent/
-|   |   +-- api.py              # FastAPI app and HTTP routes
-|   |   +-- agent.py            # ReActAgent compatibility plus AgenticRAGAgent
-|   |   +-- auth.py             # JWT auth and role checks
-|   |   +-- documents.py        # Document parsing and chunking
-|   |   +-- embedding.py        # bge-m3 embedding wrapper
-|   |   +-- graph.py            # Optional knowledge graph
-|   |   +-- hybrid_retriever.py # Vector + BM25 + graph retrieval
-|   |   +-- ingestion.py        # Async ingestion pipeline
-|   |   +-- llm.py              # OpenAI-compatible LLM client
-|   |   +-- retriever.py        # BM25 retriever
-|   |   +-- schemas.py          # Pydantic schemas
-|   |   +-- settings.py         # Environment configuration
-|   |   +-- vector_store.py     # Chroma vector store
+|   |   +-- api.py              # FastAPI 应用和 HTTP 路由
+|   |   +-- agent.py            # ReActAgent 兼容实现和 AgenticRAGAgent
+|   |   +-- auth.py             # JWT 认证和角色检查
+|   |   +-- documents.py        # 文档解析和分块
+|   |   +-- embedding.py        # bge-m3 向量封装
+|   |   +-- graph.py            # 可选知识图谱
+|   |   +-- hybrid_retriever.py # 向量 + BM25 + 图谱混合检索
+|   |   +-- ingestion.py        # 异步入库流程
+|   |   +-- llm.py              # OpenAI 兼容 LLM 客户端
+|   |   +-- retriever.py        # BM25 检索器
+|   |   +-- schemas.py          # Pydantic 数据模型
+|   |   +-- settings.py         # 环境配置加载
+|   |   +-- vector_store.py     # Chroma 向量存储
 |   +-- tests/
 |   +-- .env.example
 |   +-- pyproject.toml
@@ -70,33 +70,35 @@ AgenticRAG-KB/
 |   +-- package.json
 |   +-- vite.config.ts
 +-- .env.example
++-- .gitattributes
 +-- .gitignore
++-- LICENSE
 +-- README.md
 ```
 
-## Requirements
+## 环境要求
 
-| Component | Version / Notes |
+| 组件 | 要求 / 说明 |
 | --- | --- |
 | Python | 3.12+ |
 | Node.js | 18+ |
-| Backend | FastAPI, Chroma, sentence-transformers, BM25, NetworkX |
-| Frontend | React 19, Vite, TypeScript |
-| LLM API | Any OpenAI-compatible chat-completion endpoint |
-| Embeddings | `BAAI/bge-m3` by default |
+| 后端 | FastAPI、Chroma、sentence-transformers、BM25、NetworkX |
+| 前端 | React 19、Vite、TypeScript |
+| LLM API | 任意兼容 OpenAI Chat Completions 的接口 |
+| Embedding | 默认使用 `BAAI/bge-m3` |
 
-The backend supports Windows-style paths in configuration and normalizes them for WSL/Linux when needed.
+后端配置支持 Windows 风格路径，并会在 WSL/Linux 环境中自动转换为可用路径。
 
-## Quick Start
+## 快速开始
 
-Clone the repository and install each side separately.
+克隆仓库后，分别安装后端和前端依赖。
 
 ```bash
 git clone <your-repo-url>
 cd AgenticRAG-KB
 ```
 
-### Backend
+### 后端
 
 ```bash
 cd backend
@@ -113,15 +115,15 @@ pip install -e ".[test]"
 cp .env.example .env
 ```
 
-Edit `backend/.env` and fill in your API key, knowledge-base path, model cache path, and JWT secret.
+编辑 `backend/.env`，填写 API Key、知识库路径、模型缓存路径和 JWT 密钥。
 
-Run the API server:
+启动后端服务：
 
 ```bash
 uvicorn kb_web_agent.api:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-### Frontend
+### 前端
 
 ```bash
 cd frontend
@@ -129,104 +131,104 @@ npm install
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173` and log in with one of the development accounts listed below.
+浏览器打开 `http://127.0.0.1:5173`，使用下方开发账号登录。
 
-## Configuration
+## 配置说明
 
-Copy one of the templates before running the backend:
+运行后端前，复制配置模板：
 
 ```bash
 cp backend/.env.example backend/.env
 ```
 
-Key environment variables:
+主要环境变量如下：
 
-| Variable | Required | Description |
+| 变量 | 是否必填 | 说明 |
 | --- | --- | --- |
-| `ARK_API_KEY` | Yes | API key for the OpenAI-compatible LLM endpoint. |
-| `ARK_BASE_URL` | Yes | Base URL for the LLM API. Defaults to Volcengine Ark coding endpoint. |
-| `ARK_MODEL` | Yes | Chat model name. Defaults to `glm-5.1`. |
-| `KNOWLEDGE_BASE_PATH` | Yes | Folder containing Markdown/TXT files loaded on startup. |
-| `REACT_MAX_STEPS` | No | Maximum reasoning steps for the compatibility agent. |
-| `RETRIEVAL_TOP_K` | No | Number of retrieved snippets per search. |
-| `CHROMA_PATH` | No | Chroma persistence directory, relative to `backend/` by default. |
-| `EMBEDDING_MODEL` | No | Embedding model name. Defaults to `BAAI/bge-m3`. |
-| `MODEL_CACHE_DIR` | No | Hugging Face model cache directory. |
-| `ENABLE_VECTOR_STORE` | No | Set to `false` to fall back to BM25-only retrieval. |
-| `ENABLE_GRAPH` | No | Set to `true` to enable LLM triple extraction during ingestion. |
-| `JWT_SECRET` | Yes | Secret used to sign JWT tokens. Use a strong random value. |
-| `JWT_EXPIRE_MINUTES` | No | Token lifetime in minutes. |
-| `ADMIN_PASSWORD` | No | Overrides the development admin password. |
-| `USER_PASSWORD` | No | Overrides the development user password. |
+| `ARK_API_KEY` | 是 | OpenAI 兼容 LLM 接口的 API Key。 |
+| `ARK_BASE_URL` | 是 | LLM API Base URL，默认是火山引擎 Ark coding endpoint。 |
+| `ARK_MODEL` | 是 | 聊天模型名称，默认 `glm-5.1`。 |
+| `KNOWLEDGE_BASE_PATH` | 是 | 后端启动时自动加载 Markdown/TXT 文件的知识库目录。 |
+| `REACT_MAX_STEPS` | 否 | 兼容 ReAct Agent 的最大推理步数。 |
+| `RETRIEVAL_TOP_K` | 否 | 每次检索返回的片段数量。 |
+| `CHROMA_PATH` | 否 | Chroma 持久化目录，默认相对 `backend/`。 |
+| `EMBEDDING_MODEL` | 否 | Embedding 模型名称，默认 `BAAI/bge-m3`。 |
+| `MODEL_CACHE_DIR` | 否 | Hugging Face 模型缓存目录。 |
+| `ENABLE_VECTOR_STORE` | 否 | 设为 `false` 时退化为仅 BM25 检索。 |
+| `ENABLE_GRAPH` | 否 | 设为 `true` 后入库时启用 LLM 三元组抽取。 |
+| `JWT_SECRET` | 是 | JWT 签名密钥，请使用强随机值。 |
+| `JWT_EXPIRE_MINUTES` | 否 | Token 有效期，单位分钟。 |
+| `ADMIN_PASSWORD` | 否 | 覆盖开发环境 admin 默认密码。 |
+| `USER_PASSWORD` | 否 | 覆盖开发环境 user 默认密码。 |
 
-Never commit `.env`, API keys, JWT secrets, uploaded files, Chroma data, model caches, virtual environments, or build output.
+不要提交 `.env`、API Key、JWT 密钥、上传文件、Chroma 数据、模型缓存、虚拟环境或构建产物。
 
-## Accounts And Permissions
+## 账号与权限
 
-Development accounts are defined in `backend/kb_web_agent/auth.py`.
+开发账号定义在 `backend/kb_web_agent/auth.py`。
 
-| Username | Default password | Role | Access |
+| 用户名 | 默认密码 | 角色 | 权限 |
 | --- | --- | --- | --- |
-| `admin` | `admin123` | admin | Ask questions, view all departments, upload files, delete files. |
-| `user` | `user123` | user | Ask questions and view documents allowed by the user's departments. |
+| `admin` | `admin123` | admin | 问答、查看所有部门、上传文档、删除文档。 |
+| `user` | `user123` | user | 问答，并只能查看该用户部门范围内的文档。 |
 
-For production use, replace the in-memory user table with persistent users and hashed passwords.
+生产环境建议替换内存用户表，使用持久化用户数据和密码哈希。
 
 ## API
 
-FastAPI exposes interactive API documentation at `http://127.0.0.1:8000/docs`.
+FastAPI 交互式文档地址：`http://127.0.0.1:8000/docs`。
 
-### Public Endpoints
+### 公开接口
 
-| Method | Path | Description |
+| 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| `GET` | `/api/health` | Health and configuration summary. |
-| `POST` | `/api/search` | BM25 search for local snippets. |
-| `POST` | `/api/chat` | Synchronous compatibility chat endpoint. |
+| `GET` | `/api/health` | 健康检查和配置摘要。 |
+| `POST` | `/api/search` | 本地 BM25 片段检索。 |
+| `POST` | `/api/chat` | 同步问答兼容接口。 |
 
-### Authenticated Endpoints
+### 需要认证的接口
 
-Use `Authorization: Bearer <token>`.
+请求头需要包含 `Authorization: Bearer <token>`。
 
-| Method | Path | Role | Description |
+| 方法 | 路径 | 角色 | 说明 |
 | --- | --- | --- | --- |
-| `POST` | `/api/auth/login` | public | Login and receive a JWT. |
-| `POST` | `/api/chat/stream` | user/admin | Main streaming chat endpoint. |
-| `GET` | `/api/docs` | user/admin | List visible documents. |
-| `POST` | `/api/docs/upload` | admin | Upload a document and start ingestion. |
-| `GET` | `/api/docs/{doc_id}/status` | user/admin | Check ingestion progress. |
-| `DELETE` | `/api/docs/{doc_id}` | admin | Delete a document. |
+| `POST` | `/api/auth/login` | public | 登录并返回 JWT。 |
+| `POST` | `/api/chat/stream` | user/admin | 主流式问答接口。 |
+| `GET` | `/api/docs` | user/admin | 查看可见文档列表。 |
+| `POST` | `/api/docs/upload` | admin | 上传文档并启动入库。 |
+| `GET` | `/api/docs/{doc_id}/status` | user/admin | 查询入库进度。 |
+| `DELETE` | `/api/docs/{doc_id}` | admin | 删除文档。 |
 
-Example login request:
+登录请求示例：
 
 ```json
 { "username": "admin", "password": "admin123" }
 ```
 
-Example streaming chat request:
+流式问答请求示例：
 
 ```json
-{ "message": "Where should API tests live?" }
+{ "message": "API 测试应该放在哪个目录？" }
 ```
 
-Example SSE payloads:
+SSE 返回示例：
 
 ```text
 data: {"type":"sources","sources":[...],"trace":[...]}
-data: {"type":"token","content":"Based"}
+data: {"type":"token","content":"根据"}
 data: {"type":"done"}
 ```
 
-## Development
+## 开发与测试
 
-### Backend Tests
+### 后端测试
 
 ```bash
 cd backend
 pytest -v
 ```
 
-### Frontend Tests And Build
+### 前端测试与构建
 
 ```bash
 cd frontend
@@ -234,7 +236,7 @@ npm test -- --reporter verbose
 npm run build
 ```
 
-For Playwright tests, install browsers first:
+运行 Playwright 测试前，需要先安装浏览器：
 
 ```bash
 cd frontend
@@ -242,23 +244,23 @@ npm run install:browsers
 npm run test:e2e
 ```
 
-## Operational Notes
+## 运行注意事项
 
-- The first embedding call can download the default `BAAI/bge-m3` model. Configure `MODEL_CACHE_DIR` to a location with enough space.
-- `ENABLE_GRAPH=true` adds LLM calls during ingestion and can increase cost and latency.
-- `CHROMA_PATH` stores runtime vector data. Back it up if you do not want to re-ingest documents.
-- Uploaded files under the Chroma/runtime directory are local data and should not be committed.
-- CORS is permissive for local development. Restrict it before deploying publicly.
-- The in-memory BM25 index is rebuilt from configured knowledge-base files on startup. Uploaded documents persist in Chroma, but production deployments may need an explicit index rebuild strategy.
+- 首次调用 Embedding 时可能会下载默认的 `BAAI/bge-m3` 模型，请为 `MODEL_CACHE_DIR` 准备足够磁盘空间。
+- `ENABLE_GRAPH=true` 会在入库时增加 LLM 调用，可能显著增加耗时和费用。
+- `CHROMA_PATH` 保存运行时向量数据；如果不想重新入库，请定期备份。
+- Chroma 目录下的上传文件和运行数据属于本地数据，不应提交到仓库。
+- 当前 CORS 配置偏向本地开发，公开部署前应限制允许来源。
+- 内存 BM25 索引会在启动时从配置的知识库文件重建；生产环境可按需补充上传文档的索引重建策略。
 
-## Security Checklist Before Publishing Or Deploying
+## 发布或部署前安全检查
 
-- Confirm `.env` files are ignored and contain no committed secrets.
-- Rotate any API key that may have appeared in a shared file or terminal log.
-- Set a strong `JWT_SECRET`.
-- Change default passwords through environment variables or replace the demo auth layer.
-- Review CORS, authentication, upload limits, and document deletion policies for your deployment.
+- 确认 `.env` 文件已被忽略，并且没有提交任何真实密钥。
+- 如果密钥曾出现在共享文件或终端日志中，请立即轮换。
+- 设置强随机 `JWT_SECRET`。
+- 通过环境变量修改默认密码，或替换演示用认证层。
+- 部署前检查 CORS、认证逻辑、上传限制和文档删除策略。
 
 ## License
 
-This project is licensed under the Apache License 2.0. See `LICENSE` for details.
+本项目使用 Apache License 2.0 许可证，详见 `LICENSE`。
